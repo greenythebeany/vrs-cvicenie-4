@@ -37,7 +37,8 @@ void USART2_RegisterCallback(void *callback)
 
 /* Space for global variables, if you need them */
 
-	// type global variables here
+/* Position in bufferUSART2dma up to which data was already processed */
+static uint16_t old_pos = 0;
 
 
 /* USART2 init function */
@@ -151,7 +152,31 @@ void USART2_PutBuffer(uint8_t *buffer, uint8_t length)
  */
 void USART2_CheckDmaReception(void)
 {
-	//type your implementation here
+	if(USART2_ProcessData == 0) return;
+
+	uint16_t pos = DMA_USART2_BUFFER_SIZE - LL_DMA_GetDataLength(DMA1, LL_DMA_CHANNEL_6);
+
+	while(old_pos < pos)
+	{
+		USART2_ProcessData(bufferUSART2dma[old_pos++]);
+	}
+
+	/* Not enough space for next Rx - restart DMA from beginning of buffer */
+	if(DMA_USART2_BUFFER_SIZE - old_pos < DMA_USART2_MAX_RX_LENGTH)
+	{
+		LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_6);
+
+		/* Process data received before channel was disabled */
+		pos = DMA_USART2_BUFFER_SIZE - LL_DMA_GetDataLength(DMA1, LL_DMA_CHANNEL_6);
+		while(old_pos < pos)
+		{
+			USART2_ProcessData(bufferUSART2dma[old_pos++]);
+		}
+
+		LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_6, DMA_USART2_BUFFER_SIZE);
+		LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_6);
+		old_pos = 0;
+	}
 }
 
 

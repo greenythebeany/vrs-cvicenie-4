@@ -32,6 +32,7 @@
 
 /* USER CODE BEGIN Private defines */
 #define DMA_USART2_BUFFER_SIZE 256
+#define DMA_USART2_MAX_RX_LENGTH 20
 
 /* USER CODE END Private defines */
 
