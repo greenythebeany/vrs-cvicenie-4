@@ -23,6 +23,7 @@
 #include "dma.h"
 #include "usart.h"
 #include "gpio.h"
+#include <stdio.h>
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
@@ -34,6 +35,9 @@ void SystemClock_Config(void);
  * @param1 - received sign
  */
 void proccesDmaData(uint8_t sign);
+
+/* Waits until previous DMA Tx is finished and returns buffer free for new message */
+uint8_t* getTxBuffer(void);
 
 
 /* Space for your global variables. */
@@ -49,6 +53,9 @@ volatile uint8_t valid_string_ready = 0;
 static uint8_t rx_string[MAX_STRING_LENGTH + 1];
 static uint8_t rx_length = 0;
 static uint8_t rx_active = 0;
+
+/* Memory buffer used by DMA for USART Tx */
+static uint8_t tx_buffer[100];
 
 
 int main(void)
@@ -85,7 +92,18 @@ int main(void)
 	   * Example message (what I wish to see in terminal) - Valid string: Platn15uborZnakov, lower-case: 13, upper-case: 2
 	   */
 
-  	  	  	  //type your code here:
+	  if(valid_string_ready)
+	  {
+		  uint8_t *tx = getTxBuffer();
+
+		  __disable_irq();
+		  int len = sprintf((char*)tx, "Valid string: %s, lower-case: %d, upper-case: %d\r\n",
+				  valid_string, letter_count.small_letter, letter_count.capital_letter);
+		  valid_string_ready = 0;
+		  __enable_irq();
+
+		  USART2_PutBuffer(tx, len);
+	  }
   }
   /* USER CODE END 3 */
 }
@@ -167,6 +185,15 @@ void proccesDmaData(uint8_t sign)
 	{
 		rx_active = 0;
 	}
+}
+
+
+/* DMA Tx channel is disabled in DMA1_Channel7_IRQHandler after transfer is complete */
+uint8_t* getTxBuffer(void)
+{
+	while(LL_DMA_IsEnabledChannel(DMA1, LL_DMA_CHANNEL_7));
+
+	return tx_buffer;
 }
 
 
