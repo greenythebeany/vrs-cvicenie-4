@@ -38,7 +38,17 @@ void proccesDmaData(uint8_t sign);
 
 /* Space for your global variables. */
 
-	// type your global variables here:
+#define MAX_STRING_LENGTH 35
+
+/* Result for last valid string */
+volatile letter_count_ letter_count = {0};
+uint8_t valid_string[MAX_STRING_LENGTH + 1];
+volatile uint8_t valid_string_ready = 0;
+
+/* String currently being received */
+static uint8_t rx_string[MAX_STRING_LENGTH + 1];
+static uint8_t rx_length = 0;
+static uint8_t rx_active = 0;
 
 
 int main(void)
@@ -59,7 +69,7 @@ int main(void)
 
   /* Space for your local variables, callback registration ...*/
 
-  	  //type your code here:
+  USART2_RegisterCallback(proccesDmaData);
 
   while (1)
   {
@@ -119,7 +129,44 @@ void proccesDmaData(uint8_t sign)
 {
 	/* Process received data */
 
-		// type your algorithm here:
+	if(!rx_active)
+	{
+		if(sign == '#')
+		{
+			rx_active = 1;
+			rx_length = 0;
+		}
+		return;
+	}
+
+	if(sign == '$')
+	{
+		uint8_t small = 0;
+		uint8_t capital = 0;
+
+		for(uint8_t i = 0; i < rx_length; i++)
+		{
+			if(rx_string[i] >= 'a' && rx_string[i] <= 'z') small++;
+			else if(rx_string[i] >= 'A' && rx_string[i] <= 'Z') capital++;
+
+			valid_string[i] = rx_string[i];
+		}
+		valid_string[rx_length] = '\0';
+
+		letter_count.small_letter = small;
+		letter_count.capital_letter = capital;
+		valid_string_ready = 1;
+		rx_active = 0;
+		return;
+	}
+
+	rx_string[rx_length++] = sign;
+
+	/* End sign not received within 35 signs - discard data */
+	if(rx_length >= MAX_STRING_LENGTH)
+	{
+		rx_active = 0;
+	}
 }
 
 
