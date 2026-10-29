@@ -39,6 +39,9 @@ void proccesDmaData(uint8_t sign);
 /* Waits until previous DMA Tx is finished and returns buffer free for new message */
 uint8_t* getTxBuffer(void);
 
+/* Sends information about DMA Rx buffer state */
+void sendBufferStatus(void);
+
 
 /* Space for your global variables. */
 
@@ -78,6 +81,8 @@ int main(void)
 
   USART2_RegisterCallback(proccesDmaData);
 
+  uint16_t ms_counter = 0;
+
   while (1)
   {
 	  /* Periodic transmission of information about DMA Rx buffer state.
@@ -91,6 +96,18 @@ int main(void)
 	   * Message format - "Valid string: %s, lower-case: %d, upper-case: %d"
 	   * Example message (what I wish to see in terminal) - Valid string: Platn15uborZnakov, lower-case: 13, upper-case: 2
 	   */
+
+	  /* SysTick counter flag is set every 1 ms */
+	  if(LL_SYSTICK_IsActiveCounterFlag())
+	  {
+		  ms_counter++;
+	  }
+
+	  if(ms_counter >= 2000)
+	  {
+		  ms_counter = 0;
+		  sendBufferStatus();
+	  }
 
 	  if(valid_string_ready)
 	  {
@@ -194,6 +211,20 @@ uint8_t* getTxBuffer(void)
 	while(LL_DMA_IsEnabledChannel(DMA1, LL_DMA_CHANNEL_7));
 
 	return tx_buffer;
+}
+
+
+void sendBufferStatus(void)
+{
+	uint16_t occupied = USART2_GetRxOccupied();
+	/* Load in tenths of percent */
+	uint16_t load = (uint32_t)occupied * 1000 / DMA_USART2_BUFFER_SIZE;
+
+	uint8_t *tx = getTxBuffer();
+	int len = sprintf((char*)tx, "Buffer capacity: %d bytes, occupied memory: %d bytes, load [in %%]: %d.%d%%\r\n",
+			DMA_USART2_BUFFER_SIZE, occupied, load / 10, load % 10);
+
+	USART2_PutBuffer(tx, len);
 }
 
 

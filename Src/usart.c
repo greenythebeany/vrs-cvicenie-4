@@ -180,6 +180,13 @@ void USART2_CheckDmaReception(void)
 }
 
 
+// Number of bytes currently stored in bufferUSART2dma
+uint16_t USART2_GetRxOccupied(void)
+{
+	return DMA_USART2_BUFFER_SIZE - LL_DMA_GetDataLength(DMA1, LL_DMA_CHANNEL_6);
+}
+
+
 
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
